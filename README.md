@@ -18,7 +18,17 @@ cp .env.example .env
 npm start
 ```
 
-Health check: `GET /health`. Handler penuh terdaftar di `POST /agent`. Di local mode, set `AGENT_GAMES_HMAC_SECRET`; sebelum menggunakannya, cocokkan algoritma, encoding, dan apakah secret dashboard dipakai sebagai teks atau decoded bytes.
+Liveness check `GET /health` selalu 200 saat proses hidup, agar hosting dapat memeriksa service sebelum secret disetel. `GET /ready` tetap 503 sampai secret dan adapter tersedia. Handler penuh terdaftar di `POST /agent`. Di local mode, set `AGENT_GAMES_HMAC_SECRET`; sebelum menggunakannya, cocokkan algoritma, digest encoding, key encoding, serta prefix signature dengan format resmi. Opsi encoding disediakan agar format yang dikonfirmasi bisa dipasang tanpa mengubah kode.
+
+### Tes handshake preflight
+
+Setelah ada URL HTTPS endpoint dan HMAC secret, lakukan tes sintetis dari mesin/lingkungan yang menyimpan secret:
+
+```bash
+AGENT_GAMES_ENDPOINT_URL=https://host.example/agent npm run check:preflight
+```
+
+Skrip mengirim envelope `agent-games.preflight.v1` bertanda tangan, lalu memeriksa HTTP 200, body `{ "ok": true, "protocolVersion": "v1" }`, dan signature pada raw response body. Nilai signature/HMAC tidak dicetak. Tes ini memverifikasi endpoint dengan konfigurasi lokal; **preflight resmi tetap harus dijalankan dari dashboard Agent Games setelah endpoint diregistrasikan dan secret platform dipasang pada host**. Tanpa secret belum ada tes end-to-end resmi yang bisa dijalankan.
 
 ## Menyelesaikan integrasi
 
