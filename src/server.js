@@ -4,19 +4,11 @@ require('dotenv').config();
 const express = require('express');
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { signatureFor, verifySignature } = require('./signature');
+const { signatureFor, verifySignature, signatureOptionsFromEnv } = require('./signature');
 const { evaluateVisibleRules, validateTaskTime, normalizeHex } = require('./decision');
 const { StateStore } = require('./state');
 
 class NotReadyError extends Error {}
-
-function signatureOptions(env) {
-  return {
-    algorithm: env.AGENT_GAMES_HMAC_ALGORITHM || 'sha256',
-    encoding: env.AGENT_GAMES_SIGNATURE_ENCODING || 'hex',
-    prefix: env.AGENT_GAMES_SIGNATURE_PREFIX || ''
-  };
-}
 
 function loadAdapter(adapterPath) {
   if (!adapterPath) return null;
@@ -36,7 +28,7 @@ function createApp({ env = process.env, state, adapter, prove } = {}) {
   const app = express();
   const store = state || new StateStore(env.STATE_FILE || './data/state.json');
   const secret = env.AGENT_GAMES_HMAC_SECRET || '';
-  const sigOptions = signatureOptions(env);
+  const sigOptions = signatureOptionsFromEnv(env);
   const skew = Number(env.CLOCK_SKEW_SECONDS || 60);
   const maxBody = Number(env.MAX_BODY_BYTES || 65536);
   const inFlightTasks = new Map();
@@ -50,13 +42,16 @@ function createApp({ env = process.env, state, adapter, prove } = {}) {
 
   app.disable('x-powered-by');
   app.get('/health', (_req, res) => {
-    const ready = Boolean(secret && adapter);
-    res.status(ready ? 200 : 503).json({
-      status: ready ? 'ok' : 'not_ready',
+    res.status(200).json({
+      status: 'ok',
       protocolVersion: 'v1',
-      proofAdapterConfigured: Boolean(adapter),
-      hmacSecretConfigured: Boolean(secret)
+      preflightReady: Boolean(secret),
+      taskReady: Boolean(secret && adapter)
     });
+  });
+  app.get('/ready', (_req, res) => {
+    const ready = Boolean(secret && adapter);
+    res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready' });
   });
 
   app.post('/agent', makeRawBodyParser(maxBody), async (req, res) => {
