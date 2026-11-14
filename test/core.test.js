@@ -56,4 +56,13 @@ describe('request/response HMAC helper', () => {
     assert.equal(verifySignature(a, sig, secret, { algorithm: 'sha256', encoding: 'hex' }), true);
     assert.equal(verifySignature(b, sig, secret, { algorithm: 'sha256', encoding: 'hex' }), false);
   });
+
+  it('supports explicitly configured binary key and signature encodings', () => {
+    const raw = Buffer.from('{"ok":true}');
+    const secretHex = '0x001122aabbcc';
+    const options = { algorithm: 'sha256', encoding: 'base64url', prefix: 'hmac=', keyEncoding: 'hex' };
+    const sig = signatureFor(raw, secretHex, options);
+    assert.equal(verifySignature(raw, sig, secretHex, options), true);
+    assert.equal(verifySignature(raw, sig, '001122aabbcd', options), false);
+  });
 });
