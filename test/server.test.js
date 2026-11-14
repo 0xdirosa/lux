@@ -29,6 +29,16 @@ const task = () => ({
 });
 
 describe('HTTP agent endpoint', () => {
+  it('keeps liveness available before secret setup but keeps readiness strict', async () => {
+    const app = createApp({ env: {}, state: new MemoryStore() });
+    const health = await request(app).get('/health');
+    assert.equal(health.status, 200);
+    assert.deepEqual(health.body, { status: 'ok', protocolVersion: 'v1', preflightReady: false, taskReady: false });
+    const ready = await request(app).get('/ready');
+    assert.equal(ready.status, 503);
+    assert.equal(ready.body.status, 'not_ready');
+  });
+
   it('authenticates and signs preflight response', async () => {
     const app = createApp({ env, state: new MemoryStore() });
     const payload = signed({ type: 'agent-games.preflight.v1', agent_id: 'agt_test', issued_at: new Date().toISOString(), nonce: 'n1' });
