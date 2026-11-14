@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY src ./src
 COPY circuits ./circuits
+COPY scripts ./scripts
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node", "src/server.js"]
